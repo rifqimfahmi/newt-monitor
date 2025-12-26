@@ -321,7 +321,7 @@ trap cleanup SIGTERM SIGINT
 
 main() {
     log INFO "════════════════════════════════════════════════════════════"
-    log INFO "  Generic Tunnel Monitor v1.0.1"
+    log INFO "  Generic Tunnel Monitor v1.0.2"
     log INFO "════════════════════════════════════════════════════════════"
     log INFO "Configuration:"
     log INFO "  URL to monitor: $MONITOR_URL"

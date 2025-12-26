@@ -6,7 +6,7 @@ FROM alpine:3.19 AS base
 # Metadata
 LABEL org.opencontainers.image.title="Generic Tunnel Monitor"
 LABEL org.opencontainers.image.description="A generic monitoring solution for tunnel services with automatic container restart"
-LABEL org.opencontainers.image.version="1.0.1"
+LABEL org.opencontainers.image.version="1.0.2"
 LABEL org.opencontainers.image.authors="Rifqi"
 LABEL org.opencontainers.image.source="https://github.com/rifqimfahmi/newt-monitor"
 LABEL org.opencontainers.image.licenses="MIT"
