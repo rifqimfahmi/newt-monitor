@@ -1,0 +1,55 @@
+# Example: Monitoring Cloudflare Tunnel
+# This example shows how to monitor a Cloudflare Tunnel (cloudflared) with automatic restart
+
+version: '3.8'
+
+services:
+  # The Cloudflare Tunnel service
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare-tunnel
+    restart: unless-stopped
+    command: tunnel run
+    networks:
+      - tunnel-network
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:?TUNNEL_TOKEN required}
+      # Or use config file:
+      # - TUNNEL_CONFIG_FILE=/etc/cloudflared/config.yml
+    # volumes:
+    #   - ./cloudflared-config.yml:/etc/cloudflared/config.yml:ro
+
+  # The monitor watching the tunnel
+  cloudflare-monitor:
+    image: ghcr.io/yourusername/tunnel-monitor:1.0.0
+    container_name: cloudflare-monitor
+    restart: unless-stopped
+    networks:
+      - tunnel-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Required: Your public URL through Cloudflare Tunnel
+      - MONITOR_URL=https://myapp.example.com
+      # Required: Container name to restart
+      - CONTAINER_NAME=cloudflare-tunnel
+      # Optional: Check less frequently for stable tunnels
+      - CHECK_INTERVAL=45
+      # Optional: More retries for flaky connections
+      - RETRY_COUNT=5
+      - SUCCESS_CODES=200,301,302
+      - LOG_LEVEL=INFO
+      # Optional: Slack webhook for notifications
+      # - NOTIFY_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+    depends_on:
+      - cloudflared
+
+networks:
+  tunnel-network:
+    name: tunnel-network
+
+# How to get TUNNEL_TOKEN:
+# 1. Login to Cloudflare Zero Trust Dashboard
+# 2. Go to Access > Tunnels
+# 3. Create a new tunnel or edit existing
+# 4. Copy the tunnel token from the configuration

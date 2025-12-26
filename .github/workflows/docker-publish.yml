@@ -1,0 +1,158 @@
+name: Build and Publish Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  REGISTRY_GHCR: ghcr.io
+  REGISTRY_DOCKER: docker.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_GHCR }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request' && vars.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_DOCKER }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}
+            ${{ vars.DOCKERHUB_USERNAME != '' && format('{0}/{1}/tunnel-monitor', env.REGISTRY_DOCKER, vars.DOCKERHUB_USERNAME) || '' }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=edge,branch=main
+          labels: |
+            org.opencontainers.image.title=Generic Tunnel Monitor
+            org.opencontainers.image.description=A generic monitoring solution for tunnel services with automatic container restart
+            org.opencontainers.image.vendor=Tunnel Monitor Contributors
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "# Release ${GITHUB_REF_NAME}" > release-notes.md
+          echo "" >> release-notes.md
+          echo "## Docker Images" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### GitHub Container Registry (GHCR)" >> release-notes.md
+          echo "" >> release-notes.md
+          echo '```bash' >> release-notes.md
+          echo "# Pull specific version" >> release-notes.md
+          echo "docker pull ghcr.io/${{ github.repository }}:${VERSION}" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "# Pull latest" >> release-notes.md
+          echo "docker pull ghcr.io/${{ github.repository }}:latest" >> release-notes.md
+          echo '```' >> release-notes.md
+          echo "" >> release-notes.md
+          
+          if [[ -n "${{ vars.DOCKERHUB_USERNAME }}" ]]; then
+            echo "### Docker Hub" >> release-notes.md
+            echo "" >> release-notes.md
+            echo '```bash' >> release-notes.md
+            echo "# Pull specific version" >> release-notes.md
+            echo "docker pull ${{ vars.DOCKERHUB_USERNAME }}/tunnel-monitor:${VERSION}" >> release-notes.md
+            echo "" >> release-notes.md
+            echo "# Pull latest" >> release-notes.md
+            echo "docker pull ${{ vars.DOCKERHUB_USERNAME }}/tunnel-monitor:latest" >> release-notes.md
+            echo '```' >> release-notes.md
+            echo "" >> release-notes.md
+          fi
+          
+          echo "## What's Changed" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed changes." >> release-notes.md
+          echo "" >> release-notes.md
+          echo "## Usage" >> release-notes.md
+          echo "" >> release-notes.md
+          echo '```yaml' >> release-notes.md
+          echo "services:" >> release-notes.md
+          echo "  tunnel-monitor:" >> release-notes.md
+          echo "    image: ghcr.io/${{ github.repository }}:${VERSION}" >> release-notes.md
+          echo "    volumes:" >> release-notes.md
+          echo "      - /var/run/docker.sock:/var/run/docker.sock" >> release-notes.md
+          echo "    environment:" >> release-notes.md
+          echo "      - MONITOR_URL=https://your-tunnel-url.com" >> release-notes.md
+          echo "      - CONTAINER_NAME=your-container-name" >> release-notes.md
+          echo '```' >> release-notes.md
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "## 🎉 Build Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Images Published:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **GHCR**: \`ghcr.io/${{ github.repository }}\`" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${{ vars.DOCKERHUB_USERNAME }}" ]]; then
+            echo "- **Docker Hub**: \`${{ vars.DOCKERHUB_USERNAME }}/tunnel-monitor\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Tags:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

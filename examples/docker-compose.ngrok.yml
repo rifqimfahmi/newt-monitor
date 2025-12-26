@@ -1,0 +1,48 @@
+# Example: Monitoring ngrok Tunnel
+# This example shows how to monitor an ngrok tunnel with automatic restart
+
+version: '3.8'
+
+services:
+  # The ngrok tunnel service
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: my-ngrok
+    restart: unless-stopped
+    command: http host.docker.internal:3000
+    networks:
+      - tunnel-network
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN:?NGROK_AUTHTOKEN required}
+      # Optional: Use custom domain
+      # - NGROK_DOMAIN=myapp.ngrok.io
+
+  # The monitor watching the tunnel
+  ngrok-monitor:
+    image: ghcr.io/yourusername/tunnel-monitor:1.0.0
+    container_name: ngrok-monitor
+    restart: unless-stopped
+    networks:
+      - tunnel-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Required: URL to monitor (your ngrok URL)
+      - MONITOR_URL=https://your-app.ngrok.io
+      # Required: Container name to restart
+      - CONTAINER_NAME=my-ngrok
+      # Optional: ngrok root may return 404, so accept it as healthy
+      - SUCCESS_CODES=200,404
+      # Optional: Check more frequently for free tier
+      - CHECK_INTERVAL=20
+      - RETRY_COUNT=3
+      - LOG_LEVEL=INFO
+    depends_on:
+      - ngrok
+
+networks:
+  tunnel-network:
+    name: tunnel-network
+
+# Note: For ngrok free tier, tunnel URLs change on restart.
+# You'll need to update MONITOR_URL accordingly or use a paid plan with fixed domains.

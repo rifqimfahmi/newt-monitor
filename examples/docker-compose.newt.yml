@@ -1,0 +1,50 @@
+# Example: Monitoring Newt Tunnel Service
+# This example shows how to monitor a Newt tunnel with automatic restart
+
+version: '3.8'
+
+services:
+  # The Newt tunnel service
+  newt:
+    image: fosrl/newt
+    container_name: appwrite-newt
+    restart: unless-stopped
+    networks:
+      - tunnel-network
+    environment:
+      - PANGOLIN_ENDPOINT=https://appsto.me
+      - NEWT_ID=${NEWT_ID:?NEWT_ID required}
+      - NEWT_SECRET=${NEWT_SECRET:?NEWT_SECRET required}
+
+  # The monitor watching the tunnel
+  newt-monitor:
+    image: ghcr.io/yourusername/tunnel-monitor:1.0.0
+    container_name: newt-monitor
+    restart: unless-stopped
+    networks:
+      - tunnel-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Required: URL to monitor
+      - MONITOR_URL=https://your-app.this-thingy.xyz
+      # Required: Container name to restart
+      - CONTAINER_NAME=appwrite-newt
+      # Optional: Check interval in seconds
+      - CHECK_INTERVAL=30
+      # Optional: HTTP codes considered healthy
+      - SUCCESS_CODES=200,301,302
+      # Optional: Retry count before restart
+      - RETRY_COUNT=3
+      # Optional: Max restarts per hour
+      - MAX_RESTARTS_PER_HOUR=5
+      # Optional: Log level (ERROR, WARN, INFO, DEBUG)
+      - LOG_LEVEL=INFO
+      # Optional: Webhook for notifications
+      # - NOTIFY_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+    depends_on:
+      - newt
+
+networks:
+  tunnel-network:
+    name: tunnel-network
