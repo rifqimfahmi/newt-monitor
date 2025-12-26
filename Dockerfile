@@ -20,10 +20,6 @@ RUN apk add --no-cache \
     tzdata \
     && rm -rf /var/cache/apk/*
 
-# Create non-root user for security
-RUN addgroup -g 1000 monitor && \
-    adduser -D -u 1000 -G monitor monitor
-
 # Create app directory
 WORKDIR /app
 
@@ -31,10 +27,7 @@ WORKDIR /app
 COPY --chmod=755 monitor.sh /app/monitor.sh
 
 # Create directory for state files
-RUN mkdir -p /tmp && chown -R monitor:monitor /tmp /app
-
-# Switch to non-root user
-USER monitor
+RUN mkdir -p /tmp
 
 # Health check for the monitor itself
 HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
