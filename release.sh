@@ -118,19 +118,26 @@ read -p "Summary: " CHANGELOG_SUMMARY
 
 # Prepare changelog entry
 CHANGELOG_DATE=$(date +%Y-%m-%d)
-CHANGELOG_ENTRY="## [$NEW_VERSION] - $CHANGELOG_DATE
+
+# Create a temporary file with the new entry
+TEMP_CHANGELOG=$(mktemp)
+cat > "$TEMP_CHANGELOG" << EOF
+
+---
+
+## [$NEW_VERSION] - $CHANGELOG_DATE
 
 ### Summary
 $CHANGELOG_SUMMARY
 
-"
+EOF
 
-# Insert into CHANGELOG.md after [Unreleased] section
-sed -i "/## \[Unreleased\]/a\\
-\\
----\\
-\\
-$CHANGELOG_ENTRY" CHANGELOG.md
+# Insert the new entry after [Unreleased] section using awk
+awk '/## \[Unreleased\]/{print; system("cat '"$TEMP_CHANGELOG"'"); next}1' CHANGELOG.md > CHANGELOG.md.tmp
+mv CHANGELOG.md.tmp CHANGELOG.md
+
+# Clean up temp file
+rm -f "$TEMP_CHANGELOG"
 
 log_info "CHANGELOG.md updated"
 
