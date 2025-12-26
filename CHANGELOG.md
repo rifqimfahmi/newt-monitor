@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.0.1] - 2025-12-26
+
+### Summary
+use default root
+
+
 ### Planned
 - Custom health check commands
 - Prometheus metrics endpoint
