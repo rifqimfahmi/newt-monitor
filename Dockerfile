@@ -7,8 +7,8 @@ FROM alpine:3.19 AS base
 LABEL org.opencontainers.image.title="Generic Tunnel Monitor"
 LABEL org.opencontainers.image.description="A generic monitoring solution for tunnel services with automatic container restart"
 LABEL org.opencontainers.image.version="1.0.0"
-LABEL org.opencontainers.image.authors="Your Name"
-LABEL org.opencontainers.image.source="https://github.com/yourusername/tunnel-monitor"
+LABEL org.opencontainers.image.authors="Rifqi"
+LABEL org.opencontainers.image.source="https://github.com/rifqimfahmi/newt-monitor"
 LABEL org.opencontainers.image.licenses="MIT"
 
 # Install runtime dependencies
