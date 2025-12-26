@@ -19,7 +19,7 @@ RESTART_DELAY="${RESTART_DELAY:-60}"
 CONNECTION_TIMEOUT="${CONNECTION_TIMEOUT:-5}"
 MAX_TIMEOUT="${MAX_TIMEOUT:-10}"
 RETRY_COUNT="${RETRY_COUNT:-3}"
-MAX_RESTARTS_PER_HOUR="${MAX_RESTARTS_PER_HOUR:-5}"
+MAX_RESTARTS_PER_HOUR="${MAX_RESTARTS_PER_HOUR:-0}"  # 0 = unlimited
 NOTIFY_WEBHOOK="${NOTIFY_WEBHOOK:-}"
 LOG_LEVEL="${LOG_LEVEL:-INFO}"
 
@@ -142,6 +142,11 @@ record_restart() {
 }
 
 check_restart_limit() {
+    # If MAX_RESTARTS_PER_HOUR is 0, unlimited restarts allowed
+    if [[ "$MAX_RESTARTS_PER_HOUR" -eq 0 ]]; then
+        return 0
+    fi
+    
     local recent_restarts=$(count_recent_restarts)
     
     if [[ $recent_restarts -ge $MAX_RESTARTS_PER_HOUR ]]; then
